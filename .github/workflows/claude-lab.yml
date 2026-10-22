@@ -26,7 +26,7 @@ jobs:
       - name: Checkout trusted base
         uses: actions/checkout@v6
         with:
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Checkout PR head into a subdirectory
         uses: actions/checkout@v6

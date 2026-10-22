@@ -1,0 +1,61 @@
+name: Claude Security Lab
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  canary-test:
+    if: >-
+      github.event.issue.pull_request &&
+      github.event.comment.user.login == 'iNmbory' &&
+      contains(github.event.comment.body, '@claude /review-pr')
+
+    runs-on: ubuntu-latest
+
+    env:
+      ANTHROPIC_BASE_URL: http://127.0.0.1:9
+
+    steps:
+      - name: Checkout trusted base
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Checkout PR head into a subdirectory
+        uses: actions/checkout@v6
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/head
+          path: pr-head
+          persist-credentials: false
+
+      - name: Verify test directories
+        run: |
+          test -d .git
+          test -d pr-head
+          echo "BASE_CHECKOUT_PRESENT"
+          echo "PR_HEAD_CHECKOUT_PRESENT"
+
+      - name: Run the audited Claude Code Action
+        id: claude
+        uses: anthropics/claude-code-action@a5a423f75c251dcbff8a74e99f83b2cb03c72bfa
+        with:
+          anthropic_api_key: "sk-ant-api03-0000CANARY-POC-ONLY-NOT-A-REAL-KEY"
+          claude_args: "--add-dir pr-head --max-turns 1"
+
+      - name: Check harmless canary
+        if: always()
+        shell: bash
+        run: |
+          marker="$RUNNER_TEMP/claude-add-dir-canary"
+
+          if [ -f "$marker" ]; then
+            echo "CANARY_PRESENT"
+          else
+            echo "CANARY_ABSENT"
+          fi
